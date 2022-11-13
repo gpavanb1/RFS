@@ -1,7 +1,5 @@
 # RFS
 
-![Made with Love in India](https://madewithlove.org.in/badge.svg)
-
 [Counterflow diffusion flames](https://cefrc.princeton.edu/sites/g/files/toruqf1071/files/Files/2014%20Lecture%20Notes/Pitsch/Lecture6_LamDiffFlames_2014.pdf) are a canonical problem in combustion simulations
 
 Solution to these system of equations are used to perform large-scale calculations in a faster manner
