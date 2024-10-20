@@ -28,9 +28,6 @@ from flamelet_problem import FlameletProblem
 LAMBDA_0 = -3.
 NPTS = 30
 
-LAMBDA_0 = -3.
-NPTS = 30
-
 # Define the problem
 # Use plot_verbose=True to show flamelets each time a new solution is found
 problem = FlameletProblem(LAMBDA_0, NPTS)
