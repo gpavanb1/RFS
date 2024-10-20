@@ -11,32 +11,36 @@ Solving in mixture-fraction space with logarithmic arc-length continuation allow
 
 ## How to install and execute?
 
-* Download and install [Spitfire](https://github.com/sandialabs/Spitfire) and [Pacopy 0.1.0](https://github.com/sigma-py/pacopy/tree/branch-switching)
+* Use `conda` to setup [Cantera 3.0](https://cantera.org/install/conda-install.html#sec-install-conda) as suggested on its website
 
-* Install the other dependencies using `pip install -r requirements.txt`
+* Install the dependencies using `pip install -r requirements.txt`
 
 Just run 
 ```
-python flamelet.py
+python main.py
 ```
 
 The following program illustrates a basic example
 ```python
-import pacopy
 import matplotlib.pyplot as plt
 from flamelet_problem import FlameletProblem
 
 LAMBDA_0 = -3.
 NPTS = 30
 
+LAMBDA_0 = -3.
+NPTS = 30
+
 # Define the problem
+# Use plot_verbose=True to show flamelets each time a new solution is found
 problem = FlameletProblem(LAMBDA_0, NPTS)
 
-# Pacopy formulation
-pacopy.euler_newton(
-    problem, problem.u0, problem.lmbda0, 
-    problem.callback, newton_tol=1.0e-3, 
-    verbose=True, max_steps=3000,
+# Continue the problem
+# Entire list of arguments in `flamelet_problem.py` and same as `pacopy.euler_newton`
+problem.continuation(
+    newton_tol=1.0e-3,
+    verbose=False,
+    max_steps=3000,
     max_newton_steps=20,
     stepsize0=1.0e-1,
     stepsize_max=1.0e0,
