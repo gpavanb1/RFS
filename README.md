@@ -55,6 +55,6 @@ for any questions.
 
 ## Acknowledgements
 
-This would not have been possible with the immense efforts of [Spitfire](https://github.com/sandialabs/Spitfire) and [Pacopy](https://github.com/sigma-py/pacopy)
+This would not have been possible without the immense efforts of [Spitfire](https://github.com/sandialabs/Spitfire) and [Pacopy](https://github.com/sigma-py/pacopy)
 
 Sample Hydrogen mechanism is the same one used from [Spitfire](https://github.com/sandialabs/Spitfire)
