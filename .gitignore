@@ -13,3 +13,6 @@ output/*
 build/
 dist/
 *.egg-info/
+
+# Pacopy Cython files
+pacopy_cython/
