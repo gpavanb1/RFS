@@ -1,3 +1,7 @@
 venv
 **/__pycache__
 .vscode
+.DS_Store
+
+# Output files
+output/*

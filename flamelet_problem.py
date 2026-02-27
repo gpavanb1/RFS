@@ -9,20 +9,29 @@ from spitfire import Flamelet, FlameletSpec, ChemicalMechanismSpec
 
 
 class FlameletProblem():
-    def __init__(self, lmbda0, npts, tf=372.,
+    def __init__(self, lmbda0, npts, t_ox=298.15, t_f=298.15, p=101325.0,
                  mech='burke-hydrogen.yaml',
-                 comp_f='H2:1', plot_verbose=False):
+                 comp_f='H2:1', plot_verbose=False, 
+                 lmbda_max=2.0, lmbda_threshold=1e-4):
 
         # Set plot verbosity
         self.plot_verbose = plot_verbose
 
         # Required to reinvoke Flamelet
         self.lmbda0 = lmbda0
+        self.p = p
+        self.lmbda_max = lmbda_max
+        self.lmbda_threshold = lmbda_threshold
+
+        # Variables used in other functions
+        self.last_stored_lmbda = -np.inf
+        self.internal_step_count = 0
 
         # Flow details
         mech = ChemicalMechanismSpec(mech, 'gas')
         air = mech.stream(stp_air=True)
-        fuel = mech.stream('TPX', (tf, air.P, comp_f))
+        air.TP = t_ox, p
+        fuel = mech.stream('TPX', (t_f, p, comp_f))
 
         # Create base flamelet and steady state
         # Note that exp(lambda) = chi_st
@@ -40,22 +49,31 @@ class FlameletProblem():
         self.u0 = self.flamelet0._current_state
         self.chi_list = []
         self.Tmax_list = []
+        self.solutions = []
         self.grid = self.flamelet0.mixfrac_grid
         self.fuel_y = fuel.Y
         self.air_y = air.Y
         self.air_T = air.T
         self.fuel_T = fuel.T
+        self.species_names = mech.species_names
+        self.num_species = mech.n_species
 
     def f(self, u, lmbda):
         """
         Evaluate RHS for adiabatic flamelet
         """
         flamelet = Flamelet(FlameletSpec(
-            library_slice=self.steady_lib, stoich_dissipation_rate=math.exp(lmbda)))
+            library_slice=self.steady_lib,
+            stoich_dissipation_rate=math.exp(lmbda)))
         return flamelet._adiabatic_rhs(0., u)
 
     def inner(self, a, b):
-        return np.dot(a, b)
+        """
+        Weighted inner product to balance Temperature (O(1000)) and Mass Fractions (O(1))
+        """
+        weights = np.ones_like(a)
+        weights[::self.num_equations] = 1.0 / 2500.0
+        return np.dot(a * weights, b * weights) / len(a)
 
     def norm2_r(self, a):
         return np.dot(a, a)
@@ -69,42 +87,20 @@ class FlameletProblem():
 
     def df_dlmbda(self, u, lmbda):
         """
-        Note that $exp(\lambda) = \chi_{st}$
-        This implies $df/d\lambda = (df/d\chi_{st})*(d\chi_{st}/d\lambda)$
-        That simplifies to $(df/d\chi_{st})*exp(lambda)$
-
-        For $(df/d\chi_{st})$, refer to
-        https://cefrc.princeton.edu/sites/g/files/toruqf1071/files/Files/2010%20Lecture%20Notes/Norbert%20Peters/Lecture8.pdf
-        Pg. 8.-11
-
-        They trivially simplify to 0.5*T'' and (0.5/Z)*Y''
+        Exact derivative: df/dlmbda = exp(lmbda) * D(u)
+        Uses the f(u, lmbda + ln(2)) - f(u, lmbda) identity.
         """
-        neq = self.num_equations
-
-        # Get current temperature (by selecting every Nth element in u where N - number of species)
-        # Attach boundary values to the interior array
-        T_list = np.hstack((self.air_T, u[::neq], self.fuel_T))
-        # We care only about interior derivatives
-        Tpp = 0.5*self.DD(T_list)[1:-1]
-
-        # Only N-1 species are solved
-        Ypp = []
-        for i in range(0, neq-1):
-            species_list = np.hstack(
-                (self.air_y[i], u[i+1::neq], self.fuel_y[i]))
-            current_species_ypp = 0.5 * \
-                np.divide(self.DD(species_list)[1:], self.grid[1:])
-            Ypp.append(current_species_ypp[:-1])
-        Ypp = np.array(Ypp)
-        full_mat = np.vstack((Tpp, Ypp))
-        return math.exp(lmbda)*full_mat.flatten('F')
+        f_current = self.f(u, lmbda)
+        f_shifted = self.f(u, lmbda + math.log(2.0))
+        return f_shifted - f_current
 
     def jacobian_solver(self, u, lmbda, rhs):
         """
         Sparse Jacobian is mandatory for solution within reasonable times
         """
         flamelet = Flamelet(FlameletSpec(
-            library_slice=self.steady_lib, stoich_dissipation_rate=math.exp(lmbda)))
+            library_slice=self.steady_lib,
+            stoich_dissipation_rate=math.exp(lmbda)))
         M = flamelet._adiabatic_jac_csc(u)
         return sp.linalg.spsolve(M, rhs)
 
@@ -112,20 +108,31 @@ class FlameletProblem():
         """
         Callback to append current maximum temperature
         """
+        if abs(lmbda - self.last_stored_lmbda) < self.lmbda_threshold:
+            self.internal_step_count += 1
+            print(f"\r  ... internal step {self.internal_step_count} (lambda={lmbda:.4f})", end='', flush=True)
+            return
+
+        self.last_stored_lmbda = lmbda
+        self.internal_step_count = 0
+
         self.chi_list.append(math.exp(lmbda))
+        self.solutions.append(sol.copy())
         T_list = sol[::self.num_equations]
         Tmax = T_list.max()
         self.Tmax_list.append(Tmax)
 
-        # Print values
-        print(lmbda, Tmax)
-        print('-' * 27)
+        # Print values - clear internal step line if present and move to next
+        print(f"\rFlamelet {len(self.solutions)}: lambda = {lmbda:.4f}, Tmax = {Tmax:.2f}                        ")
 
         # Visualize current solution
         if self.plot_verbose:
             f = self.flamelet_from_state(sol)
             plt.plot(f.mixfrac_grid, f.current_temperature)
             plt.show()
+
+        if lmbda > self.lmbda_max:
+            raise StopIteration("Reached target lambda range.")
 
     def continuation(
         self,
@@ -147,31 +154,33 @@ class FlameletProblem():
 
         Uses euler_newton from pacopy
         """
-        pacopy.euler_newton(
-            self,
-            self.u0,
-            self.lmbda0,
-            self.callback,
-            newton_tol=newton_tol,
-            verbose=verbose,
-            max_steps=max_steps,
-            max_newton_steps=max_newton_steps,
-            predictor_variant=predictor_variant,
-            corrector_variant=corrector_variant,
-            stepsize0=stepsize0,
-            stepsize_max=stepsize_max,
-            stepsize_aggressiveness=stepsize_aggressiveness,
-            cos_alpha_min=cos_alpha_min,
-            theta0=theta0,
-            adaptive_theta=adaptive_theta,
-        )
+        try:
+            pacopy.euler_newton(
+                self,
+                self.u0,
+                self.lmbda0,
+                self.callback,
+                newton_tol=newton_tol,
+                verbose=verbose,
+                max_steps=max_steps,
+                max_newton_steps=max_newton_steps,
+                predictor_variant=predictor_variant,
+                corrector_variant=corrector_variant,
+                stepsize0=stepsize0,
+                stepsize_max=stepsize_max,
+                stepsize_aggressiveness=stepsize_aggressiveness,
+                cos_alpha_min=cos_alpha_min,
+                theta0=theta0,
+                adaptive_theta=adaptive_theta,
+            )
+            print() # Final newline
+        except StopIteration as e:
+            print(f"Continuation stopped: {e}")
 
     def flamelet_from_state(self, u):
         """
         Helper function to quickly isolate flamelet object from u vector
         Used to plot 
         """
-        flamelet = Flamelet(FlameletSpec(
-            library_slice=self.steady_lib, stoich_dissipation_rate=math.exp(self.lmbda0)))
-        flamelet._current_state = u
-        return flamelet
+        self.flamelet0._current_state = u
+        return self.flamelet0
