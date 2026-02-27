@@ -9,9 +9,10 @@ from spitfire import Flamelet, FlameletSpec, ChemicalMechanismSpec
 
 
 class FlameletProblem():
-    def __init__(self, lmbda0, npts, tf=372., p=101325.0,
+    def __init__(self, lmbda0, npts, t_ox=298.15, t_f=298.15, p=101325.0,
                  mech='burke-hydrogen.yaml',
-                 comp_f='H2:1', plot_verbose=False):
+                 comp_f='H2:1', plot_verbose=False, 
+                 lmbda_max=2.0, lmbda_threshold=1e-4):
 
         # Set plot verbosity
         self.plot_verbose = plot_verbose
@@ -19,12 +20,17 @@ class FlameletProblem():
         # Required to reinvoke Flamelet
         self.lmbda0 = lmbda0
         self.p = p
+        self.lmbda_max = lmbda_max
+        self.lmbda_threshold = lmbda_threshold
+
+        # Variables used in other functions
+        self.last_stored_lmbda = -np.inf
 
         # Flow details
         mech = ChemicalMechanismSpec(mech, 'gas')
         air = mech.stream(stp_air=True)
-        air.TP = air.T, p
-        fuel = mech.stream('TPX', (tf, p, comp_f))
+        air.TP = t_ox, p
+        fuel = mech.stream('TPX', (t_f, p, comp_f))
 
         # Create base flamelet and steady state
         # Note that exp(lambda) = chi_st
@@ -61,7 +67,12 @@ class FlameletProblem():
         return flamelet._adiabatic_rhs(0., u)
 
     def inner(self, a, b):
-        return np.dot(a, b)
+        """
+        Weighted inner product to balance Temperature (O(1000)) and Mass Fractions (O(1))
+        """
+        weights = np.ones_like(a)
+        weights[::self.num_equations] = 1.0 / 2500.0
+        return np.dot(a * weights, b * weights) / len(a)
 
     def norm2_r(self, a):
         return np.dot(a, a)
@@ -119,6 +130,11 @@ class FlameletProblem():
         """
         Callback to append current maximum temperature
         """
+        if abs(lmbda - self.last_stored_lmbda) < self.lmbda_threshold:
+            return
+
+        self.last_stored_lmbda = lmbda
+
         self.chi_list.append(math.exp(lmbda))
         self.solutions.append(sol.copy())
         T_list = sol[::self.num_equations]
@@ -126,7 +142,7 @@ class FlameletProblem():
         self.Tmax_list.append(Tmax)
 
         # Print values
-        print(lmbda, Tmax)
+        print(f"Flamelet {len(self.solutions)}: lambda = {lmbda:.4f}, Tmax = {Tmax:.2f}")
         print('-' * 27)
 
         # Visualize current solution
@@ -134,6 +150,9 @@ class FlameletProblem():
             f = self.flamelet_from_state(sol)
             plt.plot(f.mixfrac_grid, f.current_temperature)
             plt.show()
+
+        if lmbda > self.lmbda_max:
+            raise StopIteration("Reached target lambda range.")
 
     def continuation(
         self,
@@ -155,24 +174,27 @@ class FlameletProblem():
 
         Uses euler_newton from pacopy
         """
-        pacopy.euler_newton(
-            self,
-            self.u0,
-            self.lmbda0,
-            self.callback,
-            newton_tol=newton_tol,
-            verbose=verbose,
-            max_steps=max_steps,
-            max_newton_steps=max_newton_steps,
-            predictor_variant=predictor_variant,
-            corrector_variant=corrector_variant,
-            stepsize0=stepsize0,
-            stepsize_max=stepsize_max,
-            stepsize_aggressiveness=stepsize_aggressiveness,
-            cos_alpha_min=cos_alpha_min,
-            theta0=theta0,
-            adaptive_theta=adaptive_theta,
-        )
+        try:
+            pacopy.euler_newton(
+                self,
+                self.u0,
+                self.lmbda0,
+                self.callback,
+                newton_tol=newton_tol,
+                verbose=verbose,
+                max_steps=max_steps,
+                max_newton_steps=max_newton_steps,
+                predictor_variant=predictor_variant,
+                corrector_variant=corrector_variant,
+                stepsize0=stepsize0,
+                stepsize_max=stepsize_max,
+                stepsize_aggressiveness=stepsize_aggressiveness,
+                cos_alpha_min=cos_alpha_min,
+                theta0=theta0,
+                adaptive_theta=adaptive_theta,
+            )
+        except StopIteration as e:
+            print(f"Continuation stopped: {e}")
 
     def flamelet_from_state(self, u):
         """
