@@ -25,6 +25,7 @@ class FlameletProblem():
 
         # Variables used in other functions
         self.last_stored_lmbda = -np.inf
+        self.internal_step_count = 0
 
         # Flow details
         mech = ChemicalMechanismSpec(mech, 'gas')
@@ -131,9 +132,12 @@ class FlameletProblem():
         Callback to append current maximum temperature
         """
         if abs(lmbda - self.last_stored_lmbda) < self.lmbda_threshold:
+            self.internal_step_count += 1
+            print(f"\r  ... internal step {self.internal_step_count} (lambda={lmbda:.4f})", end='', flush=True)
             return
 
         self.last_stored_lmbda = lmbda
+        self.internal_step_count = 0
 
         self.chi_list.append(math.exp(lmbda))
         self.solutions.append(sol.copy())
@@ -141,9 +145,8 @@ class FlameletProblem():
         Tmax = T_list.max()
         self.Tmax_list.append(Tmax)
 
-        # Print values
-        print(f"Flamelet {len(self.solutions)}: lambda = {lmbda:.4f}, Tmax = {Tmax:.2f}")
-        print('-' * 27)
+        # Print values - clear internal step line if present and move to next
+        print(f"\rFlamelet {len(self.solutions)}: lambda = {lmbda:.4f}, Tmax = {Tmax:.2f}                        ")
 
         # Visualize current solution
         if self.plot_verbose:
@@ -193,6 +196,7 @@ class FlameletProblem():
                 theta0=theta0,
                 adaptive_theta=adaptive_theta,
             )
+            print() # Final newline
         except StopIteration as e:
             print(f"Continuation stopped: {e}")
 
