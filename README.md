@@ -17,12 +17,27 @@ RFS is a mixture-fraction space based flamelet solver with robust arc-length con
     ```bash
     pip install -r requirements.txt
     ```
+3.  Build the Cython extensions for the continuation solver:
+    ```bash
+    cd pacopy_cython
+    python setup.py build_ext --inplace
+    cd ..
+    ```
 
 ## Usage
 
 Run the main simulation and tabulation script:
+
 ```bash
 python main.py
+```
+
+## Testing
+
+To run the Bratu problem test for the continuation solver:
+
+```bash
+PYTHONPATH=. python pacopy_cython/test/test_bratu.py
 ```
 
 ### Basic Example
@@ -35,10 +50,10 @@ from tabulation_module import FPVTabulation, PV_H2O
 
 # 1. Define the problem (Hydrogen flame at 250 PSI)
 problem = FlameletProblem(
-    lmbda0=8.3, 
-    npts=30, 
-    t_ox=750.0, 
-    t_f=290.0, 
+    lmbda0=8.3,
+    npts=30,
+    t_ox=750.0,
+    t_f=290.0,
     p=1.72e6, # 250 PSI in Pa
     mech='burke-hydrogen.yaml'
 )
@@ -60,6 +75,7 @@ tabulation.save_to_file('output/fpv_table.npz')
 ### Post-Processing
 
 Visualize the generated tables and source terms using:
+
 ```bash
 python post_process.py
 ```

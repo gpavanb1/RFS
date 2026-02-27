@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-import pacopy
+import pacopy_cython as pacopy
 import scipy.sparse as sp
 
 

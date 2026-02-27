@@ -5,3 +5,11 @@ venv
 
 # Output files
 output/*
+
+# Cython build files
+*.c
+*.so
+# Build files
+build/
+dist/
+*.egg-info/
