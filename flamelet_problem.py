@@ -87,35 +87,12 @@ class FlameletProblem():
 
     def df_dlmbda(self, u, lmbda):
         """
-        Note that $exp(\lambda) = \chi_{st}$
-        This implies $df/d\lambda = (df/d\chi_{st})*(d\chi_{st}/d\lambda)$
-        That simplifies to $(df/d\chi_{st})*exp(lambda)$
-
-        For $(df/d\chi_{st})$, refer to
-        https://cefrc.princeton.edu/sites/g/files/toruqf1071/files/Files/2010%20Lecture%20Notes/Norbert%20Peters/Lecture8.pdf
-        Pg. 8.-11
-
-        They trivially simplify to 0.5*T'' and (0.5/Z)*Y''
+        Exact derivative: df/dlmbda = exp(lmbda) * D(u)
+        Uses the f(u, lmbda + ln(2)) - f(u, lmbda) identity.
         """
-        neq = self.num_equations
-
-        # Get current temperature (by selecting every Nth element in u where N - number of species)
-        # Attach boundary values to the interior array
-        T_list = np.hstack((self.air_T, u[::neq], self.fuel_T))
-        # We care only about interior derivatives
-        Tpp = 0.5*self.DD(T_list)[1:-1]
-
-        # Only N-1 species are solved
-        Ypp = []
-        for i in range(0, neq-1):
-            species_list = np.hstack(
-                (self.air_y[i], u[i+1::neq], self.fuel_y[i]))
-            current_species_ypp = 0.5 * \
-                np.divide(self.DD(species_list)[1:], self.grid[1:])
-            Ypp.append(current_species_ypp[:-1])
-        Ypp = np.array(Ypp)
-        full_mat = np.vstack((Tpp, Ypp))
-        return math.exp(lmbda)*full_mat.flatten('F')
+        f_current = self.f(u, lmbda)
+        f_shifted = self.f(u, lmbda + math.log(2.0))
+        return f_shifted - f_current
 
     def jacobian_solver(self, u, lmbda, rhs):
         """
@@ -205,8 +182,5 @@ class FlameletProblem():
         Helper function to quickly isolate flamelet object from u vector
         Used to plot 
         """
-        flamelet = Flamelet(FlameletSpec(
-            library_slice=self.steady_lib,
-            stoich_dissipation_rate=math.exp(self.lmbda0)))
-        flamelet._current_state = u
-        return flamelet
+        self.flamelet0._current_state = u
+        return self.flamelet0
