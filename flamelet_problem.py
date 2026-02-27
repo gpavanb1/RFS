@@ -9,7 +9,7 @@ from spitfire import Flamelet, FlameletSpec, ChemicalMechanismSpec
 
 
 class FlameletProblem():
-    def __init__(self, lmbda0, npts, tf=372.,
+    def __init__(self, lmbda0, npts, tf=372., p=101325.0,
                  mech='burke-hydrogen.yaml',
                  comp_f='H2:1', plot_verbose=False):
 
@@ -18,11 +18,13 @@ class FlameletProblem():
 
         # Required to reinvoke Flamelet
         self.lmbda0 = lmbda0
+        self.p = p
 
         # Flow details
         mech = ChemicalMechanismSpec(mech, 'gas')
         air = mech.stream(stp_air=True)
-        fuel = mech.stream('TPX', (tf, air.P, comp_f))
+        air.TP = air.T, p
+        fuel = mech.stream('TPX', (tf, p, comp_f))
 
         # Create base flamelet and steady state
         # Note that exp(lambda) = chi_st
@@ -51,7 +53,8 @@ class FlameletProblem():
         Evaluate RHS for adiabatic flamelet
         """
         flamelet = Flamelet(FlameletSpec(
-            library_slice=self.steady_lib, stoich_dissipation_rate=math.exp(lmbda)))
+            library_slice=self.steady_lib,
+            stoich_dissipation_rate=math.exp(lmbda)))
         return flamelet._adiabatic_rhs(0., u)
 
     def inner(self, a, b):
@@ -104,7 +107,8 @@ class FlameletProblem():
         Sparse Jacobian is mandatory for solution within reasonable times
         """
         flamelet = Flamelet(FlameletSpec(
-            library_slice=self.steady_lib, stoich_dissipation_rate=math.exp(lmbda)))
+            library_slice=self.steady_lib,
+            stoich_dissipation_rate=math.exp(lmbda)))
         M = flamelet._adiabatic_jac_csc(u)
         return sp.linalg.spsolve(M, rhs)
 
@@ -172,6 +176,7 @@ class FlameletProblem():
         Used to plot 
         """
         flamelet = Flamelet(FlameletSpec(
-            library_slice=self.steady_lib, stoich_dissipation_rate=math.exp(self.lmbda0)))
+            library_slice=self.steady_lib,
+            stoich_dissipation_rate=math.exp(self.lmbda0)))
         flamelet._current_state = u
         return flamelet
