@@ -42,11 +42,14 @@ class FlameletProblem():
         self.u0 = self.flamelet0._current_state
         self.chi_list = []
         self.Tmax_list = []
+        self.solutions = []
         self.grid = self.flamelet0.mixfrac_grid
         self.fuel_y = fuel.Y
         self.air_y = air.Y
         self.air_T = air.T
         self.fuel_T = fuel.T
+        self.species_names = mech.species_names
+        self.num_species = mech.n_species
 
     def f(self, u, lmbda):
         """
@@ -117,6 +120,7 @@ class FlameletProblem():
         Callback to append current maximum temperature
         """
         self.chi_list.append(math.exp(lmbda))
+        self.solutions.append(sol.copy())
         T_list = sol[::self.num_equations]
         Tmax = T_list.max()
         self.Tmax_list.append(Tmax)
