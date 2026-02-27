@@ -12,14 +12,14 @@ here = os.path.abspath(os.path.dirname(__file__))
 extensions = [
     Extension(
         "pacopy_cython.euler_newton_cython",
-        ["pacopy_cython/euler_newton_cython.pyx"],
+        ["euler_newton_cython.pyx"],
         include_dirs=[numpy.get_include()],
         extra_compile_args=["-O3", "-ffast-math"],
         extra_link_args=["-O3"],
     ),
     Extension(
         "pacopy_cython.newton_cython",
-        ["pacopy_cython/newton_cython.pyx"],
+        ["newton_cython.pyx"],
         include_dirs=[numpy.get_include()],
         extra_compile_args=["-O3", "-ffast-math"],
         extra_link_args=["-O3"],
@@ -34,6 +34,7 @@ setup(
     author_email="nico.schloemer@gmail.com",
     url="https://github.com/schlomen/pacopy",
     packages=["pacopy_cython"],
+    package_dir={"pacopy_cython": "."},
     ext_modules=cythonize(
         extensions,
         compiler_directives={
