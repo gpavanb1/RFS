@@ -101,6 +101,7 @@ class FlameletProblem():
         flamelet = Flamelet(FlameletSpec(
             library_slice=self.steady_lib,
             stoich_dissipation_rate=math.exp(lmbda)))
+        flamelet._current_state = u  # Set the state before computing Jacobian
         M = flamelet._adiabatic_jac_csc(u)
         return sp.linalg.spsolve(M, rhs)
 
