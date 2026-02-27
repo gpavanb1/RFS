@@ -93,17 +93,18 @@ class FPVTabulation:
             self.all_omega_C = np.array(self.all_omega_C)
 
     @classmethod
-    def load(cls, filename='fpv_table.npz'):
+    def load(cls, filename='output/fpv_table.npz'):
         data = np.load(filename)
         obj = cls()
         obj.grid_z = data['grid_z']
-        obj.all_T = data['all_T']
-        obj.all_Y = data['all_Y']
-        obj.all_C = data['all_C']
-        obj.all_omega_C = data['all_omega_C']
+        obj.c_uniform = data['c_uniform']
+        obj.T_table = data['T_table']
+        obj.Y_table = data['Y_table']
+        obj.OmegaC_table = data['OmegaC_table']
+        obj.C_max = data['C_max']
+        obj.C_min = data['C_min']
         obj.species_names = data['species_names']
-        obj.num_solutions = obj.all_T.shape[0]
-        obj.neq = obj.all_Y.shape[1]
+        obj.neq = obj.Y_table.shape[2]
         return obj
         
     def build_table(self, n_c=100):
@@ -213,7 +214,7 @@ class FPVTabulation:
         OmegaC = np.interp(c_norm, self.c_uniform, self.OmegaC_table[z_idx, :])
         return T, Y, OmegaC
 
-    def save_to_file(self, filename='fpv_table.npz'):
+    def save_to_file(self, filename='output/fpv_table.npz'):
         """
         Save the tabulation data for future use.
         """
