@@ -87,12 +87,12 @@ class FlameletProblem():
 
     def df_dlmbda(self, u, lmbda):
         """
-        Exact derivative: df/dlmbda = exp(lmbda) * D(u)
-        Uses the f(u, lmbda + ln(2)) - f(u, lmbda) identity.
+        Numerical derivative with respect to lmbda using delta = 1e-5.
+        Since f is linear in exp(lmbda), the exact derivative is 
+        (f(lmbda + delta) - f(lmbda)) / (exp(delta) - 1).
         """
-        f_current = self.f(u, lmbda)
-        f_shifted = self.f(u, lmbda + math.log(2.0))
-        return f_shifted - f_current
+        delta = 1e-5
+        return (self.f(u, lmbda + delta) - self.f(u, lmbda)) / (math.exp(delta) - 1.0)
 
     def jacobian_solver(self, u, lmbda, rhs):
         """

@@ -17,7 +17,8 @@ RFS is a mixture-fraction space based flamelet solver with robust arc-length con
     ```bash
     pip install -r requirements.txt
     ```
-3.  Build the Cython extensions for the continuation solver:
+3.  Make sure you have [pacopy_cython](https://github.com/gpavanb1/pacopy_cython) available in the root directory.
+4.  Build the Cython extensions for the continuation solver:
     ```bash
     cd pacopy_cython
     python setup.py build_ext --inplace
@@ -87,4 +88,5 @@ Please direct your queries to [gpavanb1](http://github.com/gpavanb1).
 ## Acknowledgements
 
 This would not have been possible without the immense efforts of [Spitfire](https://github.com/sandialabs/Spitfire) and [Pacopy](https://github.com/sigma-py/pacopy).
+RFS uses a [Cython-optimized version of Pacopy](https://github.com/gpavanb1/pacopy_cython).
 The sample Hydrogen mechanism is from [Spitfire](https://github.com/sandialabs/Spitfire).
