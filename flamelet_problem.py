@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import pacopy_cython as pacopy
 import scipy.sparse as sp
 
-
+from helpers.suppressor import suppress_stdout_stderr
+from helpers.suppressor import suppress_stdout_stderr
 from spitfire import Flamelet, FlameletSpec, ChemicalMechanismSpec
 
 
@@ -103,7 +104,10 @@ class FlameletProblem():
             stoich_dissipation_rate=math.exp(lmbda)))
         flamelet._current_state = u  # Set the state before computing Jacobian
         M = flamelet._adiabatic_jac_csc(u)
-        return sp.linalg.spsolve(M, rhs)
+        
+        # Suppress SuperLU/LAPACK singular matrix warnings (dgstrf info 1)
+        with suppress_stdout_stderr():
+            return sp.linalg.spsolve(M, rhs)
 
     def callback(self, k, lmbda, sol):
         """
