@@ -1,5 +1,11 @@
 # RFS (Robust Flamelet Solver)
 
+____
+
+Also check out **FlameletFXM++** in [SplitFXM](https://splitfxm.com) if you are interested in a faster solver!
+
+___
+
 [Counterflow diffusion flames](https://cefrc.princeton.edu/sites/g/files/toruqf1071/files/Files/2014%20Lecture%20Notes/Pitsch/Lecture6_LamDiffFlames_2014.pdf) are a canonical problem in combustion simulations. Solutions to these systems of equations are used to perform large-scale calculations in a faster manner through tabulation.
 
 RFS is a mixture-fraction space based flamelet solver with robust arc-length continuation and Flamelet Progress Variable (FPV) tabulation capabilities.
